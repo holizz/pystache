@@ -62,8 +62,8 @@ class Template(object):
             'ctag': re.escape(self.ctag)
         }
 
-        # section = r"%(otag)s[\#|^]([^\}]*)%(ctag)s\s*(.+?\s*)%(otag)s/\1%(ctag)s"
-        # self.section_re = re.compile(section % tags, re.M|re.S)
+        section = r"%(otag)s[\#|^]([^\}]*)%(ctag)s\s*(.+?\s*)%(otag)s/\1%(ctag)s"
+        self.section_re = re.compile(section % tags, re.M|re.S)
 
         tag = r"%(otag)s(#|=|&|!|>|\{)?(.+?)\1?%(ctag)s+"
         self.tag_re = re.compile(tag % tags)
@@ -84,11 +84,20 @@ class Template(object):
                     tokens.append(template[:start])
 
                 # add tag
-                tokens.append(template[start:offset])
+                _type = m.group(1)
+                if not _type:
+                    _type = '/'
+                t = {
+                        'type': _type,
+                        'name': m.group(2),
+                        'raw': template[start:offset],
+                        }
+                tokens.append(t)
                 template = template[offset:]
                 start = 0
                 offset = 0
 
+            # increment start, or append the final literal
             elif offset >= len(template):
                 if start >= len(template):
                     tokens.append(template)
@@ -100,28 +109,67 @@ class Template(object):
 
         return tokens
 
-    def _get_selection(self, template):
+    def _parse(self, tokens):
         # [section, section_name, inner]
         # section      = {{#x}}y{{/x}}
         # section_name = x
         # inner        = y
 
-        tokens = self._lexer(template)
-        print(tokens)
-        exit()
+        section = ''
+        section_name = ''
+        inner = ''
 
-        match = self.section_re.search(template)
-        if match:
-            print(match.group(0,1,2))
-            return match.group(0,1,2)
+        depth = 0
+
+        for token in tokens:
+            if isinstance(token, dict):
+                # tag
+
+                if token['type'] in ['#', '^']: # open
+                    if depth > 0:
+                        inner += token['raw']
+
+                    depth += 1
+                    section += token['raw']
+
+                    if not section_name:
+                        section_name = token['name']
+
+                elif token['type'] in ['/']: # close
+                    depth -= 1
+                    section += token['raw']
+
+                    if depth > 0:
+                        inner += token['raw']
+
+                    if depth == 0:
+                        return (section, section_name, inner)
+
+            elif depth > 0:
+                # literal
+                section += token
+                inner += token
+
+        return (section, section_name, inner)
+
+    def _get_section(self, template):
+
+        tokens = self._lexer(template)
+        match = self._parse(tokens)
+        # print(match)
+        return match
+
+        # match = self.section_re.search(template)
+        # if match:
+            # print(match.group(0,1,2))
+            # return match.group(0,1,2)
 
     def _render_sections(self, template, view):
         while True:
-            match = self._get_selection(template)
-            exit()
+            match = self._get_section(template)
             if match is None:
                 break
-            print(match)
+            # exit()
 
             section, section_name, inner = match
             section_name = section_name.strip()

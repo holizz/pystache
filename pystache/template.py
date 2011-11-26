@@ -62,19 +62,68 @@ class Template(object):
             'ctag': re.escape(self.ctag)
         }
 
-        section = r"%(otag)s[\#|^]([^\}]*)%(ctag)s\s*(.+?\s*)%(otag)s/\1%(ctag)s"
-        self.section_re = re.compile(section % tags, re.M|re.S)
+        # section = r"%(otag)s[\#|^]([^\}]*)%(ctag)s\s*(.+?\s*)%(otag)s/\1%(ctag)s"
+        # self.section_re = re.compile(section % tags, re.M|re.S)
 
         tag = r"%(otag)s(#|=|&|!|>|\{)?(.+?)\1?%(ctag)s+"
         self.tag_re = re.compile(tag % tags)
 
+    def _lexer(self, template):
+        tokens = []
+        offset = 1
+        start = 0
+
+        while True:
+
+            # if it's a {{#x}}, {{^x}} or a {{/x}}
+            m = self.tag_re.match(template[start:offset])
+            if m and (m.group(1) in ['#', '^'] or m.group(2).startswith('/')):
+
+                # add previous literal
+                if start != 0:
+                    tokens.append(template[:start])
+
+                # add tag
+                tokens.append(template[start:offset])
+                template = template[offset:]
+                start = 0
+                offset = 0
+
+            elif offset >= len(template):
+                if start >= len(template):
+                    tokens.append(template)
+                    return tokens
+                start += 1
+                offset = 0
+
+            offset += 1
+
+        return tokens
+
+    def _get_selection(self, template):
+        # [section, section_name, inner]
+        # section      = {{#x}}y{{/x}}
+        # section_name = x
+        # inner        = y
+
+        tokens = self._lexer(template)
+        print(tokens)
+        exit()
+
+        match = self.section_re.search(template)
+        if match:
+            print(match.group(0,1,2))
+            return match.group(0,1,2)
+
     def _render_sections(self, template, view):
         while True:
-            match = self.section_re.search(template)
+            match = self._get_selection(template)
+            exit()
             if match is None:
                 break
+            print(match)
 
-            section, section_name, inner = match.group(0, 1, 2)
+            section, section_name, inner = match
             section_name = section_name.strip()
             it = self.view.get(section_name, None)
             replacer = ''

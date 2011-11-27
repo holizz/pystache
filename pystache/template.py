@@ -77,7 +77,7 @@ class Template(object):
 
             # if it's a {{#x}}, {{^x}} or a {{/x}}
             m = self.tag_re.match(template[start:offset])
-            if m and (m.group(1) in ['#', '^'] or m.group(2).startswith('/')):
+            if m and (m.group(1) in ['#'] or m.group(2).startswith('/') or m.group(2).startswith('^')):
 
                 # add previous literal
                 if start != 0:
@@ -86,7 +86,7 @@ class Template(object):
                 # add tag
                 _type = m.group(1)
                 if not _type:
-                    _type = '/'
+                    _type = m.group(2)[0]
                 t = {
                         'type': _type,
                         'name': m.group(2),
@@ -98,10 +98,10 @@ class Template(object):
                 offset = 0
 
             # increment start, or append the final literal
-            elif offset >= len(template):
-                if start >= len(template):
-                    tokens.append(template)
-                    return tokens
+            elif start >= len(template):
+                tokens.append(template)
+                return tokens
+            elif start+offset >= len(template):
                 start += 1
                 offset = 0
 

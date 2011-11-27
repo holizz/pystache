@@ -76,7 +76,7 @@ class Template(object):
         while True:
 
             # if it's a {{#x}}, {{^x}} or a {{/x}}
-            m = self.tag_re.match(template[start:offset])
+            m = self.tag_re.match(template[start:start+offset])
             if m and (m.group(1) in ['#'] or m.group(2).startswith('/') or m.group(2).startswith('^')):
 
                 # add previous literal
@@ -85,15 +85,17 @@ class Template(object):
 
                 # add tag
                 _type = m.group(1)
+                name = m.group(2)
                 if not _type:
                     _type = m.group(2)[0]
+                    name = name[1:]
                 t = {
                         'type': _type,
-                        'name': m.group(2),
-                        'raw': template[start:offset],
+                        'name': name,
+                        'raw': template[start:start+offset],
                         }
                 tokens.append(t)
-                template = template[offset:]
+                template = template[start+offset:]
                 start = 0
                 offset = 0
 
@@ -154,7 +156,6 @@ class Template(object):
             return (section, section_name, inner)
 
     def _get_section(self, template):
-
         tokens = self._lexer(template)
         match = self._parse(tokens)
         return match

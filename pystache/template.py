@@ -142,7 +142,7 @@ class Template(object):
                     if depth > 0:
                         inner += token['raw']
 
-                    if depth == 0:
+                    if depth == 0 and section:
                         return (section, section_name, inner)
 
             elif depth > 0:
@@ -150,26 +150,20 @@ class Template(object):
                 section += token
                 inner += token
 
-        return (section, section_name, inner)
+        if section:
+            return (section, section_name, inner)
 
     def _get_section(self, template):
 
         tokens = self._lexer(template)
         match = self._parse(tokens)
-        # print(match)
         return match
-
-        # match = self.section_re.search(template)
-        # if match:
-            # print(match.group(0,1,2))
-            # return match.group(0,1,2)
 
     def _render_sections(self, template, view):
         while True:
             match = self._get_section(template)
             if match is None:
                 break
-            # exit()
 
             section, section_name, inner = match
             section_name = section_name.strip()
